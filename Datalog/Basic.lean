@@ -77,3 +77,26 @@ parent(brooke, damocles).
 ancestor(X, Y) :- parent(X, Y).
 ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
 ]
+
+def Term.isConst : Term → Bool
+  | .const _ => true
+  | _ => false
+
+def Term.isVar : Term → Bool
+  | .var _ => true
+  | _ => false
+
+def Term.isGround : Term → Bool :=
+  Term.isConst
+
+def Atom.isGround (atom : Atom) : Bool :=
+  ∀ t ∈ atom.terms, t.isGround
+
+def Rule.isGround (rule : Rule) : Bool :=
+  rule.head.isGround ∧ ∀ a ∈ rule.body, a.isGround
+
+def Rule.IsSafe (rule : Rule) : Prop :=
+  ∀ t ∈ rule.head.terms, t.isVar → ∃ a ∈ rule.body, t ∈ a.terms
+
+def Program.IsSafe (prog : Program) : Prop :=
+  ∀ r ∈ prog, r.IsSafe
