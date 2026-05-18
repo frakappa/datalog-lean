@@ -1,0 +1,10 @@
+name = "datalog"
+version = "0.1.0"
+defaultTargets = ["datalog"]
+
+[[lean_lib]]
+name = "Datalog"
+
+[[lean_exe]]
+name = "datalog"
+root = "Main"
