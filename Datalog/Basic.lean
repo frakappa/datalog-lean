@@ -100,3 +100,21 @@ def Rule.IsSafe (rule : Rule) : Prop :=
 
 def Program.IsSafe (prog : Program) : Prop :=
   ∀ r ∈ prog, r.IsSafe
+
+abbrev Substitution := String → String
+
+def Atom.applySub (atom : Atom) (σ : Substitution) : Atom :=
+  let terms := atom.terms.map fun
+    | .const s => .const s
+    | .var s => .const (σ s)
+  Atom.mk atom.rel terms
+
+def Atom.Subsumes (atom other : Atom) : Prop :=
+  ∃ σ : Substitution, atom.applySub σ = other
+
+infix:50 " ▷ " => Atom.Subsumes
+
+example : [Atom| parent(X, Y)] ▷ [Atom| parent(xerces, brooke)] := by
+  let σ := (fun s => match s with | "X" => "xerces" | "Y" => "brooke" | _ => "")
+  refine ⟨σ, ?_⟩
+  simp [Atom.applySub, σ]
