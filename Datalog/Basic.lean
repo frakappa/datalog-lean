@@ -95,11 +95,8 @@ def Atom.isGround (atom : Atom) : Bool :=
 def Rule.isGround (rule : Rule) : Bool :=
   rule.head.isGround ∧ ∀ a ∈ rule.body, a.isGround
 
-def Rule.IsSafe (rule : Rule) : Prop :=
-  ∀ t ∈ rule.head.terms, t.isVar → ∃ a ∈ rule.body, t ∈ a.terms
-
-def Program.IsSafe (prog : Program) : Prop :=
-  ∀ r ∈ prog, r.IsSafe
+def Rule.isFact (rule : Rule) : Bool :=
+  rule.body.isEmpty
 
 abbrev Substitution := String → String
 
@@ -109,12 +106,23 @@ def Atom.applySub (atom : Atom) (σ : Substitution) : Atom :=
     | .var s => .const (σ s)
   Atom.mk atom.rel terms
 
-def Atom.Subsumes (atom other : Atom) : Prop :=
-  ∃ σ : Substitution, atom.applySub σ = other
+inductive HM (prog : Program) : Atom → Prop where
+  | fact : {r : Rule} → r ∈ prog → r.isGround → r.isFact → HM prog r.head
+  | cons : {r : Rule} → r ∈ prog → (σ : Substitution) → ({a : Atom} → a ∈ r.body → HM prog (a.applySub σ)) → HM prog (r.head.applySub σ)
 
-infix:50 " ▷ " => Atom.Subsumes
+example : HM [Program| parent(xerces, brooke).] [Atom| parent(xerces, brooke)] := by
+  let prog := [Program| parent(xerces, brooke).]
+  have h : [Rule| parent(xerces, brooke).] ∈ prog := by grind
+  apply HM.fact h (by decide) (by decide)
 
-example : [Atom| parent(X, Y)] ▷ [Atom| parent(xerces, brooke)] := by
-  let σ := (fun s => match s with | "X" => "xerces" | "Y" => "brooke" | _ => "")
-  refine ⟨σ, ?_⟩
+example : HM [Program| parent(xerces, brooke). ancestor(X, Y) :- parent(X, Y).] [Atom| ancestor(xerces, brooke)] := by
+  let prog := [Program| parent(xerces, brooke). ancestor(X, Y) :- parent(X, Y).]
+  let σ := fun s => match s with | "X" => "xerces" | "Y" => "brooke" | _ => ""
+  have h : [Rule| ancestor(X, Y) :- parent(X, Y).] ∈ prog := by grind
+  apply HM.cons h σ
+  intro a ha
+  have : a = [Atom| parent(X, Y)] := by grind
+  rw [this]
   simp [Atom.applySub, σ]
+  have h' : [Rule| parent(xerces, brooke).] ∈ prog := by grind
+  apply HM.fact h' (by decide) (by decide)
