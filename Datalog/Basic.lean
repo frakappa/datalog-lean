@@ -106,23 +106,20 @@ def Atom.applySub (atom : Atom) (σ : Substitution) : Atom :=
     | .var s => .const (σ s)
   Atom.mk atom.rel terms
 
-inductive HM (prog : Program) : Atom → Prop where
-  | fact : {r : Rule} → r ∈ prog → r.isGround → r.isFact → HM prog r.head
-  | cons : {r : Rule} → r ∈ prog → (σ : Substitution) → ({a : Atom} → a ∈ r.body → HM prog (a.applySub σ)) → HM prog (r.head.applySub σ)
+def Program.Relations (prog : Program) (rel : String) : Prop :=
+  ∃ r ∈ prog, rel = r.head.rel ∨ ∃ a ∈ r.body, rel = a.rel
 
-example : HM [Program| parent(xerces, brooke).] [Atom| parent(xerces, brooke)] := by
-  let prog := [Program| parent(xerces, brooke).]
-  have h : [Rule| parent(xerces, brooke).] ∈ prog := by grind
-  apply HM.fact h (by decide) (by decide)
+example : Program.Relations [Program| parent(xerces, brooke).] "parent" := by
+  simp [Program.Relations]
 
-example : HM [Program| parent(xerces, brooke). ancestor(X, Y) :- parent(X, Y).] [Atom| ancestor(xerces, brooke)] := by
-  let prog := [Program| parent(xerces, brooke). ancestor(X, Y) :- parent(X, Y).]
-  let σ := fun s => match s with | "X" => "xerces" | "Y" => "brooke" | _ => ""
-  have h : [Rule| ancestor(X, Y) :- parent(X, Y).] ∈ prog := by grind
-  apply HM.cons h σ
-  intro a ha
-  have : a = [Atom| parent(X, Y)] := by grind
-  rw [this]
-  simp [Atom.applySub, σ]
-  have h' : [Rule| parent(xerces, brooke).] ∈ prog := by grind
-  apply HM.fact h' (by decide) (by decide)
+def Program.Constants (prog : Program) (t : Term) : Prop :=
+  t.isConst ∧ ∃ r ∈ prog, t ∈ r.head.terms ∨ ∃ a ∈ r.body, t ∈ a.terms
+
+example : Program.Constants [Program| parent(xerces, brooke).] [Term| brooke] := by
+  simp [Program.Constants, Term.isConst]
+
+def Program.HerbrandUniverse (prog : Program) (a : Atom) : Prop :=
+  prog.Relations a.rel ∧ ∀ t ∈ a.terms, prog.Constants t
+
+example : Program.HerbrandUniverse [Program| parent(xerces, brooke). parent(brooke, damocles).] [Atom| parent(damocles, xerces)] := by
+  simp [Program.HerbrandUniverse, Program.Relations, Program.Constants, Term.isConst]
