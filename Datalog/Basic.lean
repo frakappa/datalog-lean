@@ -30,13 +30,6 @@ instance : ToString Program where
   toString prog :=
     "\n".intercalate (prog.map toString)
 
-#eval ([
-  .mk (.mk "parent" [.const "xerces", .const "brooke"]) [],
-  .mk (.mk "parent" [.const "brooke", .const "damocles"]) [],
-  .mk (.mk "ancestor" [.var "X", .var "Y"]) [.mk "parent" [.var "X", .var "Y"]],
-  .mk (.mk "ancestor" [.var "X", .var "Y"]) [.mk "parent" [.var "X", .var "Z"], .mk "ancestor" [.var "Z", .var "Y"]],
-] : Program)
-
 declare_syntax_cat datalog_term
 declare_syntax_cat datalog_atom
 declare_syntax_cat datalog_rule
@@ -118,8 +111,8 @@ def Program.Constants (prog : Program) (t : Term) : Prop :=
 example : Program.Constants [Program| parent(xerces, brooke).] [Term| brooke] := by
   simp [Program.Constants, Term.isConst]
 
-def Program.HerbrandUniverse (prog : Program) (a : Atom) : Prop :=
+def Program.HerbrandBase (prog : Program) (a : Atom) : Prop :=
   prog.Relations a.rel ∧ ∀ t ∈ a.terms, prog.Constants t
 
-example : Program.HerbrandUniverse [Program| parent(xerces, brooke). parent(brooke, damocles).] [Atom| parent(damocles, xerces)] := by
-  simp [Program.HerbrandUniverse, Program.Relations, Program.Constants, Term.isConst]
+example : Program.HerbrandBase [Program| parent(xerces, brooke). parent(brooke, damocles).] [Atom| parent(damocles, xerces)] := by
+  simp [Program.HerbrandBase, Program.Relations, Program.Constants, Term.isConst]
