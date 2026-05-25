@@ -116,3 +116,27 @@ def Program.HerbrandBase (prog : Program) (a : Atom) : Prop :=
 
 example : Program.HerbrandBase [Program| parent(xerces, brooke). parent(brooke, damocles).] [Atom| parent(damocles, xerces)] := by
   simp [Program.HerbrandBase, Program.Relations, Program.Constants, Term.isConst]
+
+inductive Program.HerbrandModel (prog : Program) : Atom → Prop where
+  | step : {r : Rule} → r ∈ prog → (σ : Substitution) → ({a : Atom} → a ∈ r.body → prog.HerbrandModel (a.applySub σ)) → prog.HerbrandModel (r.head.applySub σ)
+
+example : Program.HerbrandModel [Program| parent(xerces, brooke).] [Atom| parent(xerces, brooke)] := by
+  let prog : Program := [Program| parent(xerces, brooke).]
+  have h : [Rule| parent(xerces, brooke).] ∈ prog := by simp [prog]
+  let σ : Substitution := fun _ => ""
+  apply Program.HerbrandModel.step h σ
+  grind
+
+example : Program.HerbrandModel [Program| parent(xerces, brooke). ancestor(X, Y) :- parent(X, Y).] [Atom| ancestor(xerces, brooke)] := by
+  let prog := [Program| parent(xerces, brooke). ancestor(X, Y) :- parent(X, Y).]
+  suffices Program.HerbrandModel prog [Atom| parent(xerces, brooke)] by
+    have h : [Rule| ancestor(X, Y) :- parent(X, Y).] ∈ prog := by simp [prog]
+    let σ : Substitution := fun | "X" => "xerces" | "Y" => "brooke" | _ => ""
+    apply Program.HerbrandModel.step h σ
+    intro a ha
+    simp at ha
+    grind [Atom.applySub]
+  have h : [Rule| parent(xerces, brooke).] ∈ prog := by simp [prog]
+  let σ : Substitution := fun _ => ""
+  apply Program.HerbrandModel.step h σ
+  grind
