@@ -1,6 +1,9 @@
+import Datalog.Utils
+
 inductive Term where
   | const : String → Term
   | var : String → Term
+  deriving BEq
 
 instance : ToString Term where
   toString
@@ -9,6 +12,7 @@ instance : ToString Term where
 structure Atom where
   rel : String
   terms : List Term
+  deriving BEq
 
 instance : ToString Atom where
   toString
@@ -99,11 +103,16 @@ def Atom.applySub (atom : Atom) (σ : Substitution) : Atom :=
     | .var s => .const (σ s)
   Atom.mk atom.rel terms
 
-def Program.Relations (prog : Program) (rel : String) : Prop :=
-  ∃ r ∈ prog, rel = r.head.rel ∨ ∃ a ∈ r.body, rel = a.rel
+abbrev Predicate := String × Nat
 
-example : Program.Relations [Program| parent(xerces, brooke).] "parent" := by
-  simp [Program.Relations]
+def Atom.predicate (atom : Atom) : Predicate :=
+  (atom.rel, atom.terms.length)
+
+def Program.Predicates (prog : Program) (pred : Predicate) : Prop :=
+  ∃ r ∈ prog, pred = r.head.predicate ∨ ∃ a ∈ r.body, pred = a.predicate
+
+example : Program.Predicates [Program| parent(xerces, brooke).] ("parent", 2) := by
+  simp [Program.Predicates, Atom.predicate]
 
 def Program.Constants (prog : Program) (t : Term) : Prop :=
   t.isConst ∧ ∃ r ∈ prog, t ∈ r.head.terms ∨ ∃ a ∈ r.body, t ∈ a.terms
@@ -112,10 +121,10 @@ example : Program.Constants [Program| parent(xerces, brooke).] [Term| brooke] :=
   simp [Program.Constants, Term.isConst]
 
 def Program.HerbrandBase (prog : Program) (a : Atom) : Prop :=
-  prog.Relations a.rel ∧ ∀ t ∈ a.terms, prog.Constants t
+  prog.Predicates a.predicate ∧ ∀ t ∈ a.terms, prog.Constants t
 
 example : Program.HerbrandBase [Program| parent(xerces, brooke). parent(brooke, damocles).] [Atom| parent(damocles, xerces)] := by
-  simp [Program.HerbrandBase, Program.Relations, Program.Constants, Term.isConst]
+  simp [Program.HerbrandBase, Program.Predicates, Atom.predicate, Program.Constants, Term.isConst]
 
 inductive Program.HerbrandModel (prog : Program) : Atom → Prop where
   | step : {r : Rule} → r ∈ prog → (σ : Substitution) → ({a : Atom} → a ∈ r.body → prog.HerbrandModel (a.applySub σ)) → prog.HerbrandModel (r.head.applySub σ)
@@ -140,3 +149,46 @@ example : Program.HerbrandModel [Program| parent(xerces, brooke). ancestor(X, Y)
   let σ : Substitution := fun _ => ""
   apply Program.HerbrandModel.step h σ
   grind
+
+def Rule.getPredicates (rule : Rule) : List Predicate :=
+  rule.head.predicate :: rule.body.map Atom.predicate
+
+def Program.getPredicates (prog : Program) : List Predicate :=
+  prog.flatMap Rule.getPredicates |>.eraseDups
+
+#eval Program.getPredicates [Program|
+parent(xerces, brooke).
+parent(brooke, damocles).
+ancestor(X, Y) :- parent(X, Y).
+ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
+]
+
+def Atom.getConstants (atom : Atom) : List String :=
+  atom.terms.filterMap fun
+    | .const s => some s
+    | _ => none
+
+def Rule.getConstants (rule : Rule) : List String :=
+  rule.head.getConstants ++ rule.body.flatMap Atom.getConstants
+
+def Program.getConstants (prog : Program) : List String :=
+  prog.flatMap Rule.getConstants |>.eraseDups
+
+#eval Program.getConstants [Program|
+parent(xerces, brooke).
+parent(brooke, damocles).
+ancestor(X, Y) :- parent(X, Y).
+ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
+]
+
+def Program.getHerbrandBase (prog : Program) : List Atom :=
+  prog.getPredicates.flatMap (fun (rel, arity) =>
+    prog.getConstants.product arity |>.map (List.map Term.const) |>.map (fun terms => Atom.mk rel terms))
+  |>.eraseDups
+
+#eval Program.getHerbrandBase [Program|
+parent(xerces, brooke).
+parent(brooke, damocles).
+ancestor(X, Y) :- parent(X, Y).
+ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
+]
