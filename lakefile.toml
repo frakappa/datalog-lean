@@ -1,6 +1,6 @@
 name = "datalog"
 version = "0.1.0"
-defaultTargets = ["datalog"]
+defaultTargets = []
 
 [[lean_lib]]
 name = "Datalog"
