@@ -154,41 +154,55 @@ def Rule.getPredicates (rule : Rule) : List Predicate :=
   rule.head.predicate :: rule.body.map Atom.predicate
 
 def Program.getPredicates (prog : Program) : List Predicate :=
-  prog.flatMap Rule.getPredicates |>.eraseDups
+  prog.flatMap Rule.getPredicates
 
 #eval Program.getPredicates [Program|
 parent(xerces, brooke).
 parent(brooke, damocles).
 ancestor(X, Y) :- parent(X, Y).
 ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
-]
+] |>.eraseDups
 
-def Atom.getConstants (atom : Atom) : List String :=
-  atom.terms.filterMap fun
-    | .const s => some s
-    | _ => none
+def Atom.getConstants (atom : Atom) : List Term :=
+  atom.terms.filter Term.isConst
 
-def Rule.getConstants (rule : Rule) : List String :=
+def Rule.getConstants (rule : Rule) : List Term :=
   rule.head.getConstants ++ rule.body.flatMap Atom.getConstants
 
-def Program.getConstants (prog : Program) : List String :=
-  prog.flatMap Rule.getConstants |>.eraseDups
+def Program.getConstants (prog : Program) : List Term :=
+  prog.flatMap Rule.getConstants
 
 #eval Program.getConstants [Program|
 parent(xerces, brooke).
 parent(brooke, damocles).
 ancestor(X, Y) :- parent(X, Y).
 ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
-]
+] |>.eraseDups
 
 def Program.getHerbrandBase (prog : Program) : List Atom :=
-  prog.getPredicates.flatMap (fun (rel, arity) =>
-    prog.getConstants.product arity |>.map (List.map Term.const) |>.map (fun terms => Atom.mk rel terms))
-  |>.eraseDups
+  prog.getPredicates.flatMap (fun (rel, arity) => prog.getConstants.product arity |>.map (Atom.mk rel ·))
 
 #eval Program.getHerbrandBase [Program|
 parent(xerces, brooke).
 parent(brooke, damocles).
 ancestor(X, Y) :- parent(X, Y).
 ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
-]
+] |>.eraseDups
+
+theorem Program.mem_getPredicates_iff (prog : Program) :
+    ∀ p, p ∈ prog.getPredicates ↔ prog.Predicates p := by
+  intro p
+  simp [Program.getPredicates, Rule.getPredicates, Atom.predicate, Program.Predicates]
+  grind
+
+theorem Program.mem_getConstants_iff (prog : Program) :
+    ∀ t, t ∈ prog.getConstants ↔ prog.Constants t := by
+  intro t
+  simp [Program.getConstants, Rule.getConstants, Atom.getConstants, Program.Constants]
+  grind
+
+theorem Program.mem_getHerbrandBase_iff (prog : Program) :
+    ∀ a, a ∈ prog.getHerbrandBase ↔ prog.HerbrandBase a := by
+  intro a
+  simp [Program.getHerbrandBase, Program.mem_getPredicates_iff, List.mem_product_iff, Program.mem_getConstants_iff, Program.HerbrandBase, Atom.predicate]
+  grind

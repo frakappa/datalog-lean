@@ -4,7 +4,3 @@ defaultTargets = ["datalog"]
 
 [[lean_lib]]
 name = "Datalog"
-
-[[lean_exe]]
-name = "datalog"
-root = "Main"
