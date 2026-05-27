@@ -206,3 +206,16 @@ theorem Program.mem_getHerbrandBase_iff (prog : Program) :
   intro a
   simp [Program.getHerbrandBase, Program.mem_getPredicates_iff, List.mem_product_iff, Program.mem_getConstants_iff, Program.HerbrandBase, Atom.predicate]
   grind
+
+def Rule.IsSafe (rule : Rule) : Prop :=
+  ∀ t ∈ rule.head.terms, t.isVar → ∃ a ∈ rule.body, t ∈ a.terms
+
+def Program.IsSafe (prog : Program) : Prop :=
+  ∀ r ∈ prog, r.IsSafe
+
+example : Program.IsSafe [Program|
+parent(xerces, brooke).
+parent(brooke, damocles).
+ancestor(X, Y) :- parent(X, Y).
+ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
+] := by simp [Program.IsSafe, Rule.IsSafe, Term.isVar]
