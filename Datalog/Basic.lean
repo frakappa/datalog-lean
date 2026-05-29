@@ -219,3 +219,35 @@ parent(brooke, damocles).
 ancestor(X, Y) :- parent(X, Y).
 ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
 ] := by simp [Program.IsSafe, Rule.IsSafe, Term.isVar]
+
+theorem isConst_of_mem_applySub {t : Term} {a : Atom} {σ : Substitution} (h : t ∈ (a.applySub σ).terms) : t.isConst := by
+  simp [Atom.applySub] at h
+  simp [Term.isConst]
+  grind
+
+theorem HerbrandModel_subseteq_HerbrandBase (prog : Program) (safety : prog.IsSafe) :
+    ∀ a, prog.HerbrandModel a → prog.HerbrandBase a := by
+  intro a h
+  induction h with
+  | step h_r_mem_prog σ HerbrandModel_of_mem_body ih =>
+    rename_i r
+    simp [Program.HerbrandBase]
+    constructor
+    · simp [Program.Predicates, Atom.predicate, Atom.applySub]
+      grind
+    · intro t h_t_mem_applySub
+      simp [Program.Constants]
+      constructor
+      · exact isConst_of_mem_applySub h_t_mem_applySub
+      · cases Classical.em (t ∈ r.head.terms) with
+        | inl h_t_mem_head => exact ⟨r, h_r_mem_prog, .inl h_t_mem_head⟩
+        | inr h_t_not_mem_head =>
+          have ⟨s, hs⟩ : ∃ s, .var s ∈ r.head.terms ∧ .const (σ s) = t := by
+            simp [Atom.applySub, List.mem_map] at h_t_mem_applySub
+            grind
+          have ⟨a', ha'⟩ := (safety r h_r_mem_prog) (.var s) hs.left (by simp [Term.isVar])
+          have : t ∈ (a'.applySub σ).terms := by
+            simp [Atom.applySub]
+            grind
+          simp [Program.HerbrandBase, Program.Constants] at ih
+          grind
