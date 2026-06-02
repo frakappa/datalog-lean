@@ -1,4 +1,3 @@
-import Datalog.Syntax
 import Datalog.DSL
 import Datalog.Utils
 

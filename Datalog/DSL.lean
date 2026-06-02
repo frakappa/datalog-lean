@@ -19,10 +19,7 @@ open Lean.Syntax (mkStrLit) in
 macro_rules
   | `([Term| $s:ident]) =>
     let s := s.getId.toString
-    if s.front.isUpper then
-      `(Term.var $(mkStrLit s))
-    else
-      `(Term.const $(mkStrLit s))
+    if s.front.isUpper then `(Term.var $(mkStrLit s)) else `(Term.const $(mkStrLit s))
   | `([Atom| $rel:ident]) =>
     `(Atom.mk $(mkStrLit rel.getId.toString) [])
   | `([Atom| $rel:ident ( $[$terms:datalog_term],* )]) =>
