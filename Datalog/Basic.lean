@@ -220,7 +220,8 @@ ancestor(X, Y) :- parent(X, Y).
 ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
 ] := by simp [Program.IsSafe, Rule.IsSafe, Term.isVar]
 
-theorem isConst_of_mem_applySub {t : Term} {a : Atom} {σ : Substitution} (h : t ∈ (a.applySub σ).terms) : t.isConst := by
+theorem isConst_of_mem_applySub {t : Term} {a : Atom} {σ : Substitution} (h : t ∈ (a.applySub σ).terms) :
+    t.isConst := by
   simp [Atom.applySub] at h
   simp [Term.isConst]
   grind
@@ -251,3 +252,38 @@ theorem HerbrandModel_subseteq_HerbrandBase (prog : Program) (safety : prog.IsSa
             grind
           simp [Program.HerbrandBase, Program.Constants] at ih
           grind
+
+def Subseteq (db₁ db₂ : Atom → Prop) : Prop :=
+  ∀ a, db₁ a → db₂ a
+
+infix:50 " ⊆ " => Subseteq
+
+def Program.ImmediateConsequence (prog : Program) (db : Atom → Prop) (a : Atom) : Prop :=
+  ∃ r ∈ prog, ∃ σ, r.head.applySub σ = a ∧ ∀ a' ∈ r.body, db (a'.applySub σ)
+
+def Program.LeastFixedPoint (prog : Program) (a : Atom) : Prop :=
+  ∀ db, prog.ImmediateConsequence db ⊆ db → db a
+
+theorem ImmediateConsequence_monotonic (prog : Program) :
+    ∀ db₁ db₂, db₁ ⊆ db₂ → prog.ImmediateConsequence db₁ ⊆ prog.ImmediateConsequence db₂ := by
+  intro db₁ db₂ h
+  simp [Subseteq, Program.ImmediateConsequence]
+  intro a r hr σ hσ ha
+  refine ⟨r, hr, σ, hσ, ?_⟩
+  simp [Subseteq] at h
+  grind
+
+theorem HerbrandModel_iff_LeastFixedPoint (prog : Program) :
+    ∀ a, prog.HerbrandModel a ↔ prog.LeastFixedPoint a := by
+  intro a
+  constructor
+  · intro h db hdb
+    induction h with
+    | step hr σ _ ih =>
+      apply hdb
+      exact ⟨_, hr, σ, rfl, fun a' => ih⟩
+  · intro h
+    apply h
+    intro a' ⟨r, hr, σ, hσ, hbody⟩
+    rw [← hσ]
+    apply Program.HerbrandModel.step hr _ (fun {a} ha => hbody a ha)
