@@ -1,4 +1,5 @@
 import Datalog.DSL
+import Datalog.Spec
 
 abbrev SubstitutionC :=
   List (String × String)
@@ -32,6 +33,15 @@ def Term.applySubC (sub : SubstitutionC) : Term → Term
 def Atom.applySubC (sub : SubstitutionC) (atom : Atom) : Atom :=
   Atom.mk atom.rel (atom.terms.map (Term.applySubC sub))
 
+theorem Term.applySubC_eq_applySub_toFun (term : Term) (sub : SubstitutionC) : term.applySubC sub = term.applySub sub.toFun := by
+  simp [Term.applySubC, Term.applySub, SubstitutionC.toFun]
+  rfl
+
+theorem Atom.applySubC_eq_applySub_toFun (atom : Atom) (sub : SubstitutionC) : atom.applySubC sub = atom.applySub sub.toFun := by
+  simp [Atom.applySubC, Atom.applySub]
+  intro t ht
+  exact Term.applySubC_eq_applySub_toFun t sub
+
 #eval [Atom| parent(X, Y)].applySubC [("Y", "brooke"), ("X", "xerces")]
 #eval [Atom| parent(X, X)].applySubC [("X", "xerces")]
 
@@ -40,6 +50,9 @@ def Rule.getSubs (rule : Rule) (db : List Atom) : List SubstitutionC :=
 
 def Program.step (prog : Program) (db : List Atom) : List Atom :=
   prog.flatMap (fun rule => rule.getSubs db |>.map (fun sub => Atom.applySubC sub rule.head))
+
+def toFun (db : List Atom) : Atom → Prop :=
+  fun a => a ∈ db
 
 partial def Program.eval (prog : Program) (db : List Atom := []) : List Atom :=
   let db' := prog.step db
