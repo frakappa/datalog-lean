@@ -1,14 +1,16 @@
-def List.product {α : Type} (xs : List α) (len : Nat) : List (List α) :=
+import Mathlib.Tactic
+
+def Finset.cartesianPower {α : Type} [DecidableEq (List α)] (s : Finset α) (len : Nat) : Finset (List α) :=
   match len with
-  | 0 => [[]]
-  | n + 1 => xs.product n |>.flatMap (fun tup => xs.map (fun x => x :: tup))
+  | 0 => {[]}
+  | n + 1 => s.cartesianPower n |>.biUnion (fun tup => s.image (· :: tup))
 
-#eval [1, 2, 3].product 0
-#eval [1, 2, 3].product 1
-#eval [1, 2, 3].product 3
+#eval ({1, 2, 3} : Finset Nat).cartesianPower 0
+#eval ({1, 2, 3} : Finset Nat).cartesianPower 1
+#eval ({1, 2, 3} : Finset Nat).cartesianPower 3
 
-theorem List.mem_product_iff {α : Type} (xs : List α) (len : Nat) (tup : List α) :
-    tup ∈ xs.product len ↔ tup.length = len ∧ ∀ e ∈ tup, e ∈ xs := by
+theorem Finset.mem_cartesianPower {α : Type} [DecidableEq (List α)] {s : Finset α} {len : Nat} {tup : List α} :
+    tup ∈ s.cartesianPower len ↔ tup.length = len ∧ ∀ e ∈ tup, e ∈ s := by
   induction len generalizing tup with
-  | zero => grind [List.product]
-  | succ n ih => cases tup with grind [List.product]
+  | zero => grind [Finset.cartesianPower]
+  | succ n ih => cases tup with grind [Finset.cartesianPower]

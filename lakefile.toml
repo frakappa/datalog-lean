@@ -4,3 +4,7 @@ defaultTargets = []
 
 [[lean_lib]]
 name = "Datalog"
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
